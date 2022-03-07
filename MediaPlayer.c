@@ -62,14 +62,13 @@
 #include <wiringPi.h>
 #include <vlc/vlc.h>
 
-#include "mediadef.h"                               // Definition of the media clip
+#include "mediadef.h"                               // Definition of the media clips
 
 #define CONTROLLER_TTY  "/dev/ttyACM0"              // The tty we use to talk to the exhibit controller
 #define MAX_LINE_LENGTH (128)                       // The maximum length of a user's input (chars)
 #define MAX_WORDS       (3)                         // The maximum number of words in a command line (chars)
 #define MAX_WSIZE       (20)                        // The maximum length of a word (chars)
 #define SLEEP_US        (100)                       // Number of uSec to sleep whe some time needs to pass (1/30 sec)
-#define MEDIA_DELTA_MS  (600)                       // The Adobe Rush times - VLC times in ms (18 frames)
 #define BANNER          "PTMSC Pinto Abalone Exhibit Media Player v0.1, February 2022"
 #define CMD_SET_VERS    (1000)                      // The version of the command set we speak with the controller
 
@@ -95,13 +94,14 @@ FILE *ctlOut;                                       // The output stream for the
 bool running = true;                                // When this goes false (e.g., the stop command), we shut down
 
 // Inter-thread communication between a thread that wants to change the clip that's playing and 
-// main loop. To change the clip, do a piLock(LOCK_CLIP), then set newClip to the desired clip. 
-// Then set switchClip to true and do a piUnlock(LOCK_CLIP). The main loop checks switchClip to 
-// determine if someone has set it. If so it does a piLock(LOCK_CLIP), copies newClip, sets 
-// switchClip to false and  does a piUnlock(LOCK_CLIP). Note that with this protocol, it's 
-// possible to overwrite somebody else's clip change before it's processed. If that's not what 
-// what you want, check switchClip to see that it's false before you change newClip.
-clip_t newClip;
+// main loop. To change the clip, do a piLock(LOCK_CLIP), then set newClipNo to the number of the 
+// desired clip. Then set switchClip to true and do a piUnlock(LOCK_CLIP). The main loop checks 
+// switchClip to determine if someone has set it. If so it does a piLock(LOCK_CLIP), copies 
+// newClipNo, sets switchClip to false and  does a piUnlock(LOCK_CLIP). Note that with this 
+// protocol, it's possible to overwrite somebody else's clip change before it's processed. If 
+// that's not what what you want, check switchClip to see that it's false before you change 
+// newClipNo.
+int newClipNo;
 bool switchClip = false;
 
 /***
@@ -141,7 +141,7 @@ void onPlay(int n, char word[MAX_WORDS][MAX_WSIZE]) {
         return;
     }
     piLock(LOCK_CLIP);      // Get the lock
-    newClip = clips[c];
+    newClipNo = c;
     switchClip = true;
     piUnlock(LOCK_CLIP);    // Release the lock
 }
@@ -268,12 +268,12 @@ PI_THREAD(controllerThread) {
 int main(int argc, char* argv[]) {
     libvlc_instance_t * inst;                       // The libVLC engine we'll be using
     libvlc_media_player_t *mp;                      // The media player we'll use
-    libvlc_media_t *m;                              // The media item we'll play
-    clip_t curClip;                                 // The clip that's currently playing
+    libvlc_media_t *m[CLIP_COUNT];                  // The clips we'll play represented as media items
+    int curClipNo;                                  // The clip that's currently playing
+    char optionStr[40];                             // where we form up the option string for media_add_option()
 
     // Show we're alive
     puts(BANNER);
-    puts("Type \"help\" for list of commands");
 
     // Get the keyboard input thread going. All stdin activity is done on keyboardThread
     // stdout and ctlOut activity can be done by any thread.
@@ -318,25 +318,25 @@ int main(int argc, char* argv[]) {
 
     // Set things up to play the exhibit's media
     inst = libvlc_new (0, NULL);                    // Load and initialize the libVLC engine
-  
-    m = libvlc_media_new_path (inst, MEDIA_PATH);
-                                                    // Make the media item pointing to what we want to play
 
-    if (m == NULL) {                                // Check that it worked
-        puts("Failed to create clip media item");
-        return RET_MICF;
+    for (int cNo = 0; cNo < CLIP_COUNT; cNo++) {
+        char path[sizeof(MEDIA_PATH) + CLIP_FILE_MAX] = MEDIA_PATH;
+        strcat(path, clips[cNo].file);
+        printf("Creating media clip %d (%s) path: %s\n", cNo, clips[cNo].name, path);
+        m[cNo] = libvlc_media_new_path(inst, path);    // Make a media item pointing to MEDIA_PATH
+        if (m[cNo] == NULL) {                                // Check that it worked
+            printf("Failed to create clip media item %d\n", cNo);
+            return RET_MICF;
+        }
     }
-        
-    mp = libvlc_media_player_new_from_media (m);    // Create a new media player to play the item
+    newClipNo = curClipNo = IDLE_CLIP;              // Indicate the idle clip is the one that's playing
 
-    if (mp == NULL) {                               // Check that it worked
+    // Get the media player going with the initial clip playing
+    mp = libvlc_media_player_new_from_media (m[curClipNo]);
+    if (mp == NULL) {
         puts("Failed to create media player");
         return RET_MPCF;
     }
-     
-    libvlc_media_release (m);                       // Indicate we have no further use for the media item
-
-    // Get the clip up and running
     if (libvlc_media_player_play (mp) != 0) {           // Kick it off
         puts("Media player failed to play");
         return RET_MPPF;
@@ -345,33 +345,42 @@ int main(int argc, char* argv[]) {
         usleep(SLEEP_US);                               // sleep for a bit
     }
 
-    newClip = curClip = clips[idle];
-
     puts("MediaPlayer initialized and running.");
+    puts("Type \"help\" for list of commands");
 
     // Main loop. Do until running goes false
     while (running) {
+        static bool startedClip = false;
         if (switchClip) {
             piLock(LOCK_CLIP);
-            curClip = newClip;
+            curClipNo = newClipNo;
             switchClip = false;
             piUnlock(LOCK_CLIP);
-            libvlc_media_player_set_time(mp, curClip.start);
+            printf("Switching to clip %d (%s)\n", curClipNo, clips[curClipNo].name);
+            startedClip = false;
+            libvlc_media_player_pause(mp);
         }
-        libvlc_time_t curTime = libvlc_media_player_get_time(mp) + MEDIA_DELTA_MS;
-        if (curTime >= curClip.end) {
-            printf("Current time: %jd, Clip end: %jd\n", curTime, curClip.end);
-            if (curClip.clipType != loop) {
-                curClip = clips[idle];
+        if (!libvlc_media_player_is_playing(mp)) {
+            if (clips[curClipNo].type != loop && startedClip) {
+                curClipNo = IDLE_CLIP;
             }
-            libvlc_media_player_set_time(mp, curClip.start);
+            printf("Starting clip %d (%s)\n", curClipNo, clips[curClipNo].name);
+            libvlc_media_player_set_media(mp, m[curClipNo]);
+            libvlc_media_player_play(mp);
+            startedClip = true;
+            while (!libvlc_media_player_is_playing(mp)) {       // Wait until it gets going
+                usleep(SLEEP_US);                               // sleep for a bit
+            }
         }
-        usleep(SLEEP_US);               // Sleep for a bit
+        usleep(SLEEP_US);
     }
 
     // Quitting time. Clean up after ourselves
-    libvlc_media_player_stop(mp);       // Stop the media player
-    libvlc_media_player_release(mp);    // Release it
-    libvlc_release(inst);               // Then release the engine
-    return RET_OK;                      // All very normal
+     for (int cNo = 0; cNo < CLIP_COUNT; cNo++) {   // Release the media items
+        libvlc_media_release (m[cNo]);
+    }
+    libvlc_media_player_stop(mp);                   // Stop the media player
+    libvlc_media_player_release(mp);                // Release it
+    libvlc_release(inst);                           // Then release the engine
+    return RET_OK;                                  // End normally
 }

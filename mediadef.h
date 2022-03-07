@@ -37,17 +37,13 @@
  * SOFTWARE. 
  * 
 ***/
-#define MEDIA_PATH      "/home/pi/Downloads/Sequence03Low.mp4" // The video containing all the clips for the exhibit.
 
-enum clipNames {
-    idle,               // This is the idle loop clip -- the clip that plays when nothing else is
-    decide1,            // This clip shows a diver inspecting an outplacement site to see if it's a good one
-    place1,             // This clip shows a diver doing an outplacement
-    place2,             // This clip shows a diver doing an outplacement
-    miss,               // This clip shows a diver doing an outplacement incorrectly
-    decide2,            // This clip shows a diver inspecting a potntial site to see if it's a good one
-    CLIP_COUNT          // This is not a clip name. Its value is the number of clips. It must be last.
-};
+// The MRL for the video containing all the clips for the exhibit.
+#define MEDIA_PATH      "/home/pi/Downloads/"
+#define IDLE_CLIP       (0)                                 // Which of the clips id the "idle" clip
+#define CLIP_COUNT      (sizeof(clips) / sizeof(clips[0]))  // Number of clips we have
+#define CLIP_NAME_MAX   (10)                                // Maximum number of chars in clip_t name
+#define CLIP_FILE_MAX   (30)                                // Maximum number of chars in clip_t file
 
 enum clipTypes {
     playOnce,           // Play the clip once and then revert to idle. It's okay to interrupt it with an new clip
@@ -56,18 +52,15 @@ enum clipTypes {
 };
 
 typedef struct clip_t {
-    enum clipNames clipName;        // One of the clipNames
-    enum clipTypes clipType;        // Which of the clipTypes this is 
-    libvlc_time_t start;            // Time clip starts (ms)
-    libvlc_time_t end;              // Time clip ends (ms)
+    char name[CLIP_NAME_MAX];                               // Name of clip
+    char file[CLIP_FILE_MAX];                               // Filename relative to MEDIAPATH
+    enum clipTypes type;                                    // Type of clip
 } clip_t;
 
 // The collection clip definitions
 clip_t clips[] = {
-    {idle, loop, 0, 13300}, 
-    {decide1, playOnce, 13300, 34667},
-    {place1, playOnce, 34667, 71533},
-    {place2, playOnce, 71533, 93267},
-    {miss, playOnce, 93267, 106367},
-    {decide2, playOnce, 106367, 119000}
+    {"idle", "idle.mp4", loop}, 
+    {"decide1", "decide1.mp4", playOnce},
+    {"place1", "place1.mp4", playOnce},
+    {"miss1", "miss1.mp4", playOnce}
 };
