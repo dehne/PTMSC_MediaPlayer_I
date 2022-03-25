@@ -59,6 +59,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <termios.h>
+#include <time.h>
 #include <wiringPi.h>
 #include <vlc/vlc.h>
 
@@ -68,9 +69,10 @@
 #define MAX_LINE_LENGTH (128)                       // The maximum length of a user's input (chars)
 #define MAX_WORDS       (3)                         // The maximum number of words in a command line (chars)
 #define MAX_WSIZE       (20)                        // The maximum length of a word (chars)
-#define SLEEP_US        (100)                       // Number of uSec to sleep whe some time needs to pass (1/30 sec)
+#define SLEEP_MICROS    (100)                       // Number of uSec to sleep when a little time needs to pass
 #define BANNER          "PTMSC Pinto Abalone Exhibit Media Player v0.1, February 2022"
 #define CMD_SET_VERS    (1000)                      // The version of the command set we speak with the controller
+#define ESCAPE_SEC      (300)                       // Seconds of execution before we stop. Comment out def to disable
 
 // piLock() / piUnlock() usage
 #define LOCK_CLIP       (0)                         // piLock(0) is for changing clips
@@ -126,24 +128,26 @@ void onHelp(int n, char word[MAX_WORDS][MAX_WSIZE]) {
  * 
  * Command handler for play command
  * 
- * play c   Play clip c; 0 <= c < CLIP_COUNT
- * !play c  Same as play, but issued by controller
+ * play cName   Play clip cName; where cName is one of
+ *              the clips[].name entries
+ * !play cName  Same as play, but issued by controller
  * 
  ***/
 void onPlay(int n, char word[MAX_WORDS][MAX_WSIZE]) {
     if (n < 2) {
-        puts("Clip number not specified.\n");
+        puts("Clip name not specified.\n");
         return;
     }
-    int c = -1;
-    if (sscanf(word[1], "%d", &c) != 1 || c < 0 || c >= CLIP_COUNT) {
-        printf("Clip number must be 0 to %d\n", CLIP_COUNT);
-        return;
+    for (int cNo = 0; cNo < CLIP_COUNT; cNo++) {
+        if (strcmp(word[1], clips[cNo].name) == 0) {
+            piLock(LOCK_CLIP);      // Get the lock
+            newClipNo = cNo;
+            switchClip = true;
+            piUnlock(LOCK_CLIP);    // Release the lock
+            return;
+        }
     }
-    piLock(LOCK_CLIP);      // Get the lock
-    newClipNo = c;
-    switchClip = true;
-    piUnlock(LOCK_CLIP);    // Release the lock
+    printf("No clip named \"%s\"\n", word[1]);
 }
 
 /***
@@ -230,6 +234,7 @@ PI_THREAD(keyboardThread) {
         if (fgets(buffer, sizeof(buffer), stdin) != NULL) {
             // Send commands beginning with '!' to controller; others are local
             if (buffer[0] == '!') {
+                printf("Sending \"%s\" to controller", &buffer[1]);
                 fprintf(ctlOut, &buffer[1]);
             } else {
                 doCommand(buffer, kbRegistry);
@@ -270,7 +275,6 @@ int main(int argc, char* argv[]) {
     libvlc_media_player_t *mp;                      // The media player we'll use
     libvlc_media_t *m[CLIP_COUNT];                  // The clips we'll play represented as media items
     int curClipNo;                                  // The clip that's currently playing
-    char optionStr[40];                             // where we form up the option string for media_add_option()
 
     // Show we're alive
     puts(BANNER);
@@ -317,19 +321,20 @@ int main(int argc, char* argv[]) {
     }
 
     // Set things up to play the exhibit's media
-    inst = libvlc_new (0, NULL);                    // Load and initialize the libVLC engine
+    const char *args[] = {"--vout=mmal_vout"};
+    inst = libvlc_new (sizeof(args) / sizeof(args[0]), args);   // Load and initialize the libVLC engine
 
     for (int cNo = 0; cNo < CLIP_COUNT; cNo++) {
         char path[sizeof(MEDIA_PATH) + CLIP_FILE_MAX] = MEDIA_PATH;
         strcat(path, clips[cNo].file);
         printf("Creating media clip %d (%s) path: %s\n", cNo, clips[cNo].name, path);
-        m[cNo] = libvlc_media_new_path(inst, path);    // Make a media item pointing to MEDIA_PATH
-        if (m[cNo] == NULL) {                                // Check that it worked
+        m[cNo] = libvlc_media_new_path(inst, path);             // Make a media item pointing to MEDIA_PATH
+        if (m[cNo] == NULL) {                                   // Check that it worked
             printf("Failed to create clip media item %d\n", cNo);
             return RET_MICF;
         }
     }
-    newClipNo = curClipNo = IDLE_CLIP;              // Indicate the idle clip is the one that's playing
+    newClipNo = curClipNo = IDLE_CLIP;                          // Indicate the idle clip is the one that's playing
 
     // Get the media player going with the initial clip playing
     mp = libvlc_media_player_new_from_media (m[curClipNo]);
@@ -341,8 +346,9 @@ int main(int argc, char* argv[]) {
         puts("Media player failed to play");
         return RET_MPPF;
     }
-    while (!libvlc_media_player_is_playing(mp)) {       // Wait until it gets going
-        usleep(SLEEP_US);                               // sleep for a bit
+    libvlc_set_fullscreen(mp, true);
+    while (!libvlc_media_player_is_playing(mp)) {       // Spin until it gets going
+        usleep(SLEEP_MICROS);
     }
 
     puts("MediaPlayer initialized and running.");
@@ -351,7 +357,7 @@ int main(int argc, char* argv[]) {
     // Main loop. Do until running goes false
     while (running) {
         static bool startedClip = false;
-        if (switchClip) {
+        if (switchClip && clips[curClipNo].type != playThrough) {
             piLock(LOCK_CLIP);
             curClipNo = newClipNo;
             switchClip = false;
@@ -362,17 +368,23 @@ int main(int argc, char* argv[]) {
         }
         if (!libvlc_media_player_is_playing(mp)) {
             if (clips[curClipNo].type != loop && startedClip) {
-                curClipNo = IDLE_CLIP;
+                curClipNo = IDLE_CLIP;  // non-looping clip finished; switch to idle clip
             }
             printf("Starting clip %d (%s)\n", curClipNo, clips[curClipNo].name);
             libvlc_media_player_set_media(mp, m[curClipNo]);
             libvlc_media_player_play(mp);
             startedClip = true;
-            while (!libvlc_media_player_is_playing(mp)) {       // Wait until it gets going
-                usleep(SLEEP_US);                               // sleep for a bit
+            while (!libvlc_media_player_is_playing(mp)) {       // Spin until it gets going
+                usleep(SLEEP_MICROS);
             }
         }
-        usleep(SLEEP_US);
+        usleep(SLEEP_MICROS);
+        #ifdef ESCAPE_SEC
+        //Escape hatch
+        if (clock() / CLOCKS_PER_SEC >= ESCAPE_SEC) {
+            running = false;
+        }
+        #endif
     }
 
     // Quitting time. Clean up after ourselves
@@ -380,6 +392,7 @@ int main(int argc, char* argv[]) {
         libvlc_media_release (m[cNo]);
     }
     libvlc_media_player_stop(mp);                   // Stop the media player
+    libvlc_set_fullscreen(mp, false);               // Take it out of fullscreen mode
     libvlc_media_player_release(mp);                // Release it
     libvlc_release(inst);                           // Then release the engine
     return RET_OK;                                  // End normally

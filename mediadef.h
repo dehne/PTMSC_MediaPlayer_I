@@ -47,7 +47,7 @@
 
 enum clipTypes {
     playOnce,           // Play the clip once and then revert to idle. It's okay to interrupt it with an new clip
-    playThrough,        // Play the clip once and the revert to idle. No new clip until it finishes
+    playThrough,        // Play the clip once and the revert to idle. New clips ignored until it finishes
     loop                // Play the clip over and over. It's okay to interrupt it with a new clip
 };
 
@@ -60,7 +60,7 @@ typedef struct clip_t {
 // The collection clip definitions
 clip_t clips[] = {
     {"idle", "idle.mp4", loop}, 
-    {"decide1", "decide1.mp4", playOnce},
-    {"place1", "place1.mp4", playOnce},
-    {"miss1", "miss1.mp4", playOnce}
+    {"decide1", "decide1.mp4", playThrough},
+    {"place1", "place1.mp4", playThrough},
+    {"miss1", "miss1.mp4", playThrough}
 };
