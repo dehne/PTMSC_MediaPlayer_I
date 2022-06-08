@@ -41,7 +41,6 @@
 
 // The MRL for the video containing all the clips for the exhibit.
 #define MEDIA_PATH      "/home/pi/Downloads/"
-#define START_LOOP_ID   (2)                                 // Which of the clips is the initial "idle" clip
 #define CLIP_COUNT      (sizeof(clips) / sizeof(clips[0]))  // Number of clips we have
 #define CLIP_NAME_MAX   (18)                                // Maximum number of chars in clip_t name
 #define CLIP_FILE_MAX   (30)                                // Maximum number of chars in clip_t file

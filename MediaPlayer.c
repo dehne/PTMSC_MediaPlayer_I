@@ -332,8 +332,8 @@ int main(int argc, char* argv[]) {
     libvlc_media_player_t *mp;                      // The media player we'll use
     libvlc_media_t *m[CLIP_COUNT];                  // The clips we'll play represented as media items
     int reqClipId;                                  // The id of the requested clip; 0 if none
-    int reqLoopId = START_LOOP_ID;                  // The id of the clip that plays when no clip is playing
-    int nowPlayingId = START_LOOP_ID;               // The id of the clip the media player was last started on
+    int reqLoopId = 0;                              // The id of the clip that plays when no clip is playing
+    int nowPlayingId = 0;                           // The id of the clip the media player was last started on
 
     // Show we're alive
     puts(BANNER);
@@ -393,30 +393,22 @@ int main(int argc, char* argv[]) {
             return RET_MICF;
         }
     }
-    newClipId = reqClipId = START_LOOP_ID;                      // Indicate the idle clip is the one that's playing
 
-    // Get the media player going with the initial clip playing
-    mp = libvlc_media_player_new_from_media (m[reqClipId]);
+    // Instantiate the media player
+    mp = libvlc_media_player_new(inst);
     if (mp == NULL) {
         puts("Failed to create media player");
         return RET_MPCF;
     }
-    if (libvlc_media_player_play (mp) != 0) {           // Kick it off
-        puts("Media player failed to play");
-        return RET_MPPF;
-    }
 //    libvlc_set_fullscreen(mp, true);
-    while (!libvlc_media_player_is_playing(mp)) {       // Spin until it gets going
-        usleep(SLEEP_MICROS);
-    }
 
-    puts("MediaPlayer initialized and running.");
+    puts("MediaPlayer initialized.");
     puts("Type \"help\" for list of commands");
 
     // Main loop. Do until running goes false
-    // There are three key variables here. reqLoopId, the id of the looping clip to play if there no specific clip has been
-    // requested; reqClipId, the id of the last specifically requested clip (0 if none); and nowPlayingId, the id of the 
-    // clip the media player was last tasked to play.
+    // There are three key variables here. reqLoopId, the id of the looping clip to play (0 if none) when there no specific 
+    // clip has been requested; reqClipId, the id of the last specifically requested clip (0 if none); and nowPlayingId, the 
+    // id of the clip the media player was last tasked to play.
     // There are two types of clips that can be requested, playOnce and PlayThrough. playOnce clips should be interrupted
     // if they are playing when a new request is received. A playThrough clip plays to the end before a newly requested clip
     // starts.
@@ -460,13 +452,15 @@ int main(int argc, char* argv[]) {
             } else {                                                //   Otherwise (there wasn't a pending clip play request)
                 nowPlayingId = reqLoopId;                           //     Play the looping clip
             }
-            libvlc_media_player_set_media(mp, m[nowPlayingId]);     //   Tell the player we want to play the current clip
-            libvlc_media_player_play(mp);                           //   Kick it off
-            while (!libvlc_media_player_is_playing(mp)) {           //   Spin until it gets going
-                usleep(SLEEP_MICROS);
+            if (nowPlayingId != 0) {                                //   If there's something to play
+                libvlc_media_player_set_media(mp, m[nowPlayingId]); //     Tell the player we want to play the nowPlayingId clip
+                libvlc_media_player_play(mp);                       //     Kick it off
+                while (!libvlc_media_player_is_playing(mp)) {       //     Spin until it gets going
+                    usleep(SLEEP_MICROS);
+                }
             }
         }
-        usleep(SLEEP_MICROS);
+        usleep(SLEEP_MICROS);                                       // Mostly, we sleep
         #ifdef ESCAPE_SEC
         //Escape hatch
         if (clock() / CLOCKS_PER_SEC >= ESCAPE_SEC) {
