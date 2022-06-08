@@ -63,6 +63,7 @@
 #include <wiringPi.h>
 #include <vlc/vlc.h>
 
+
 #include "mediadef.h"                               // Definition of the media clips
 
 #define CONTROLLER_TTY  "/dev/ttyACM0"              // The tty we use to talk to the exhibit controller
@@ -72,10 +73,11 @@
 #define SLEEP_MICROS    (100)                       // Number of uSec to sleep when a little time needs to pass
 #define BANNER          "PTMSC Pinto Abalone Exhibit Media Player v0.1, February 2022"
 #define CMD_SET_VERS    (1000)                      // The version of the command set we speak with the controller
-#define ESCAPE_SEC      (300)                       // Seconds of execution before we stop. Comment out def to disable
+#define ESCAPE_SEC      (300)                       // Seconds of execution before we stop. Comment out to disable
 
 // piLock() / piUnlock() usage
 #define LOCK_CLIP       (0)                         // piLock(0) is for changing clips
+#define LOCK_LOOP       (1)                         // piLock(1) is for changing the loop to play when not playing a clip
 
 // Return codes
 #define RET_OK          (0)                         // Normal end
@@ -96,15 +98,19 @@ FILE *ctlOut;                                       // The output stream for the
 bool running = true;                                // When this goes false (e.g., the stop command), we shut down
 
 // Inter-thread communication between a thread that wants to change the clip that's playing and 
-// main loop. To change the clip, do a piLock(LOCK_CLIP), then set newClipNo to the number of the 
+// main loop. To change the clip, do a piLock(LOCK_CLIP), then set newClipId to the number of the 
 // desired clip. Then set switchClip to true and do a piUnlock(LOCK_CLIP). The main loop checks 
 // switchClip to determine if someone has set it. If so it does a piLock(LOCK_CLIP), copies 
-// newClipNo, sets switchClip to false and  does a piUnlock(LOCK_CLIP). Note that with this 
+// newClipId, sets switchClip to false and  does a piUnlock(LOCK_CLIP). Note that with this 
 // protocol, it's possible to overwrite somebody else's clip change before it's processed. If 
 // that's not what what you want, check switchClip to see that it's false before you change 
-// newClipNo.
-int newClipNo;
+// newClipId.
+int newClipId;
 bool switchClip = false;
+// Inter-thread communication for changing the loop that plays when there's no clip playing. Works 
+// the same way as the above but using piLock(LOCK_LOOP), newLoopId and switchLoop
+int newLoopId;
+bool switchLoop = false;
 
 /***
  * 
@@ -130,8 +136,6 @@ void onHelp(int n, char word[MAX_WORDS][MAX_WSIZE]) {
  * 
  * play cName   Play clip cName; where cName is one of
  *              the clips[].name entries
- * !play cName  Same as play, but issued by controller
- * 
  ***/
 void onPlay(int n, char word[MAX_WORDS][MAX_WSIZE]) {
     if (n < 2) {
@@ -141,13 +145,64 @@ void onPlay(int n, char word[MAX_WORDS][MAX_WSIZE]) {
     for (int cNo = 0; cNo < CLIP_COUNT; cNo++) {
         if (strcmp(word[1], clips[cNo].name) == 0) {
             piLock(LOCK_CLIP);      // Get the lock
-            newClipNo = cNo;
+            newClipId = cNo;
             switchClip = true;
             piUnlock(LOCK_CLIP);    // Release the lock
             return;
         }
     }
     printf("No clip named \"%s\"\n", word[1]);
+}
+
+/***
+ * 
+ * Command handler for the !playClip command, issued by controller
+ * 
+ * !playClip clipId
+ *      Play the clip whose clip id -- the index into 
+ *      clips[] -- is clipId
+ ***/
+void onPlayClip(int n, char word[MAX_WORDS][MAX_WSIZE]) {
+    int clipId = 0;
+    if (n < 2) {
+        puts("!playClip inviked with no clipId specified; used 0.\n");
+    } else {
+        clipId = atoi(word[1]);
+        if (clipId < 0 || clipId >= CLIP_COUNT) {
+            printf("!playClip inviked with invalid clipId: \"%s\"; used .", word[1]);
+            clipId = 0;
+        }
+    }
+    piLock(LOCK_CLIP);      // Get the lock
+    newClipId = clipId;
+    switchClip = true;
+    piUnlock(LOCK_CLIP);    // Release the lock
+}
+
+/***
+ * 
+ * Command handler for !setLoop command, issued by controller
+ * 
+ * !setLoop clipId
+ *      Set the loop to be played when the currently playing clip finishes 
+ *      playing to the clip whose id -- the index into clips[] -- is clipId. 
+ *      If a loop is playing, switch to playing this loop instead.
+ ***/
+void onSetLoop(int n, char word[MAX_WORDS][MAX_WSIZE]) {
+    int clipId = 0;
+    if (n < 2) {
+        puts("!setLoop inviked with no clipId specified; used 0.\n");
+    } else {
+        clipId = atoi(word[1]);
+        if (clipId < 0 || clipId >= CLIP_COUNT) {
+            printf("!setLoop inviked with invalid clipId: \"%s\"; used .", word[1]);
+            clipId = 0;
+        }
+    }
+    piLock(LOCK_LOOP);      // Get the lock
+    newLoopId = clipId;
+    switchLoop = true;
+    piUnlock(LOCK_LOOP);    // Release the lock
 }
 
 /***
@@ -194,7 +249,9 @@ cmd_t kbRegistry[] = {
 // The registry of controller-issued commands aimed at MediaPlayer. 
 // The last command must be {"__END__", NULL}.
 cmd_t controllerRegistry[] = {
-    {"!play", onPlay},
+    {"play", onPlay},
+    {"!playClip", onPlayClip},
+    {"!setLoop", onSetLoop},
     {"!stop", onStop},
     {"!version", onVersion},
     {"__END__", NULL}
@@ -274,7 +331,9 @@ int main(int argc, char* argv[]) {
     libvlc_instance_t * inst;                       // The libVLC engine we'll be using
     libvlc_media_player_t *mp;                      // The media player we'll use
     libvlc_media_t *m[CLIP_COUNT];                  // The clips we'll play represented as media items
-    int curClipNo;                                  // The clip that's currently playing
+    int reqClipId;                                  // The id of the requested clip; 0 if none
+    int reqLoopId = START_LOOP_ID;                  // The id of the clip that plays when no clip is playing
+    int nowPlayingId = START_LOOP_ID;               // The id of the clip the media player was last started on
 
     // Show we're alive
     puts(BANNER);
@@ -321,7 +380,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Set things up to play the exhibit's media
-    const char *args[] = {"--vout=mmal_vout"};
+    const char *args[] = {"--vout=mmal_vout", "--avcodec-skiploopfilter=4"};
     inst = libvlc_new (sizeof(args) / sizeof(args[0]), args);   // Load and initialize the libVLC engine
 
     for (int cNo = 0; cNo < CLIP_COUNT; cNo++) {
@@ -334,10 +393,10 @@ int main(int argc, char* argv[]) {
             return RET_MICF;
         }
     }
-    newClipNo = curClipNo = IDLE_CLIP;                          // Indicate the idle clip is the one that's playing
+    newClipId = reqClipId = START_LOOP_ID;                      // Indicate the idle clip is the one that's playing
 
     // Get the media player going with the initial clip playing
-    mp = libvlc_media_player_new_from_media (m[curClipNo]);
+    mp = libvlc_media_player_new_from_media (m[reqClipId]);
     if (mp == NULL) {
         puts("Failed to create media player");
         return RET_MPCF;
@@ -346,7 +405,7 @@ int main(int argc, char* argv[]) {
         puts("Media player failed to play");
         return RET_MPPF;
     }
-    libvlc_set_fullscreen(mp, true);
+//    libvlc_set_fullscreen(mp, true);
     while (!libvlc_media_player_is_playing(mp)) {       // Spin until it gets going
         usleep(SLEEP_MICROS);
     }
@@ -355,26 +414,55 @@ int main(int argc, char* argv[]) {
     puts("Type \"help\" for list of commands");
 
     // Main loop. Do until running goes false
+    // There are three key variables here. reqLoopId, the id of the looping clip to play if there no specific clip has been
+    // requested; reqClipId, the id of the last specifically requested clip (0 if none); and nowPlayingId, the id of the 
+    // clip the media player was last tasked to play.
+    // There are two types of clips that can be requested, playOnce and PlayThrough. playOnce clips should be interrupted
+    // if they are playing when a new request is received. A playThrough clip plays to the end before a newly requested clip
+    // starts.
     while (running) {
-        static bool startedClip = false;
-        if (switchClip && clips[curClipNo].type != playThrough) {
-            piLock(LOCK_CLIP);
-            curClipNo = newClipNo;
+        if (switchLoop) {                                           // If we've been told to switch which clip is the looping one
+            int oldLoopId = reqLoopId;                              //   Remember what the id of the old looping clip was
+            piLock(LOCK_LOOP);                                      //   Do the ritual to update what the requested looping clip is
+            reqLoopId = newLoopId;
+            switchLoop = false;
+            piUnlock(LOCK_LOOP);
+            if (clips[reqLoopId].type != loop) {                    //   If the new requested clip isn't looping, ignore the request
+                printf("Ignoring request to loop non-looping clip %s\n", clips[reqLoopId].name);
+                reqLoopId - oldLoopId;
+            } else {                                                //   Otherwise (make the switch to the new one)
+                if (nowPlayingId == oldLoopId) {                    //     If current clip that's playing is the old looping clip
+                    nowPlayingId = reqLoopId;                       //       Swap out the old looping clip with the new one
+                    libvlc_media_player_pause(mp);                  //       Pause the playing (so the player is out of work)
+                }
+                printf("Switching looping clip to %d (%s)\n", reqLoopId, clips[reqLoopId].name);
+            }
+        }
+        if (switchClip && reqClipId == 0) {                         // If we've been told to play a new clip and there's not one already queued
+            piLock(LOCK_CLIP);                                      //   Do the ritual to switch which clip is current
+            reqClipId = newClipId;
             switchClip = false;
             piUnlock(LOCK_CLIP);
-            printf("Switching to clip %d (%s)\n", curClipNo, clips[curClipNo].name);
-            startedClip = false;
-            libvlc_media_player_pause(mp);
+            printf("Switching to clip %d (%s)\n", reqClipId, clips[reqClipId].name);
+            if (clips[nowPlayingId].type != playThrough && libvlc_media_player_is_playing(mp)) {
+                                                                    //   If what's playing is interruptable and the media player is playing
+                libvlc_media_player_pause(mp);                      //     Pause the player (so that it's out of work)
+            }            
         }
-        if (!libvlc_media_player_is_playing(mp)) {
-            if (clips[curClipNo].type != loop && startedClip) {
-                curClipNo = IDLE_CLIP;  // non-looping clip finished; switch to idle clip
+        if (!libvlc_media_player_is_playing(mp)) {                  // If the player is out of work
+            if (clips[nowPlayingId].type != loop) {                 //   If what's been playing a looping clip (i.e., it was requested)
+                fprintf(ctlOut, "!videoEnds");                      //     Let the controller know the clip finished
             }
-            printf("Starting clip %d (%s)\n", curClipNo, clips[curClipNo].name);
-            libvlc_media_player_set_media(mp, m[curClipNo]);
-            libvlc_media_player_play(mp);
-            startedClip = true;
-            while (!libvlc_media_player_is_playing(mp)) {       // Spin until it gets going
+            if (reqClipId != 0) {                                   //   If there's a requested clip pending
+                nowPlayingId = reqClipId;                           //     Switch to the requested clip
+                reqClipId = 0;                                      //     Mark that we've go it handled
+                printf("Starting clip %d (%s)\n", nowPlayingId, clips[nowPlayingId].name);
+            } else {                                                //   Otherwise (there wasn't a pending clip play request)
+                nowPlayingId = reqLoopId;                           //     Play the looping clip
+            }
+            libvlc_media_player_set_media(mp, m[nowPlayingId]);     //   Tell the player we want to play the current clip
+            libvlc_media_player_play(mp);                           //   Kick it off
+            while (!libvlc_media_player_is_playing(mp)) {           //   Spin until it gets going
                 usleep(SLEEP_MICROS);
             }
         }
@@ -382,6 +470,7 @@ int main(int argc, char* argv[]) {
         #ifdef ESCAPE_SEC
         //Escape hatch
         if (clock() / CLOCKS_PER_SEC >= ESCAPE_SEC) {
+            puts("Stopping: Escape hatch activated.");
             running = false;
         }
         #endif

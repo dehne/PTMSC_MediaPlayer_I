@@ -37,12 +37,13 @@
  * SOFTWARE. 
  * 
 ***/
+#pragma once
 
 // The MRL for the video containing all the clips for the exhibit.
 #define MEDIA_PATH      "/home/pi/Downloads/"
-#define IDLE_CLIP       (0)                                 // Which of the clips id the "idle" clip
+#define START_LOOP_ID   (2)                                 // Which of the clips is the initial "idle" clip
 #define CLIP_COUNT      (sizeof(clips) / sizeof(clips[0]))  // Number of clips we have
-#define CLIP_NAME_MAX   (10)                                // Maximum number of chars in clip_t name
+#define CLIP_NAME_MAX   (18)                                // Maximum number of chars in clip_t name
 #define CLIP_FILE_MAX   (30)                                // Maximum number of chars in clip_t file
 
 enum clipTypes {
@@ -57,10 +58,33 @@ typedef struct clip_t {
     enum clipTypes type;                                    // Type of clip
 } clip_t;
 
-// The collection clip definitions
+// The collection clip definitions, indexed by the type sb_clipId_t
 clip_t clips[] = {
-    {"idle", "idle.mp4", loop}, 
-    {"decide1", "decide1.mp4", playThrough},
-    {"place1", "place1.mp4", playThrough},
-    {"miss1", "miss1.mp4", playThrough}
+    {"noClip", "dummy.mp4", playOnce},
+    {"divingLoop", "divingLoop.mp4", loop},
+    {"restingLoop", "restingLoop.mp4", loop}, 
+    {"abandonedClip", "abandonedClip.mp4", playOnce}, 
+    {"fullSiteClip1", "fullSite1Clip.mp4", playOnce}, 
+    {"fullSiteClip2", "fullSite2Clip.mp4", playOnce}, 
+    {"fullSiteClip3", "fullSite3Clip.mp4", playOnce}, 
+    {"fullSiteClip4", "fullSite4Clip.mp4", playOnce}, 
+    {"fullSiteClip5", "fullSite5Clip.mp4", playOnce},
+    {"siteNoCohortsClip1", "siteNoCohorts1Clip.mp4", playOnce}, 
+    {"siteNoCohortsClip2", "siteNoCohorts2Clip.mp4", playOnce}, 
+    {"siteNoCohortsClip3", "siteNoCohorts3Clip.mp4", playOnce}, 
+    {"siteNoCohortsClip4", "siteNoCohorts4Clip.mp4", playOnce}, 
+    {"siteNoCohortsClip5", "siteNoCohorts5Clip.mp4", playOnce},
+    {"openSiteLoop1", "openSite1Loop.mp4", loop}, 
+    {"openSiteLoop2", "openSite2Loop.mp4", loop}, 
+    {"openSiteLoop3", "openSite3Loop.mp4", loop}, 
+    {"openSiteLoop4", "openSite4Loop.mp4", loop}, 
+    {"openSiteLoop5", "openSite5Loop.mp4", loop}, 
+    {"fillSiteClip1", "fillSite1Clip.mp4", playOnce}, 
+    {"fillSiteClip2", "fillSite2Clip.mp4", playOnce}, 
+    {"fillSiteClip3", "fillSite3Clip.mp4", playOnce}, 
+    {"fillSiteClip4", "fillSite4Clip.mp4", playOnce}, 
+    {"fillSiteClip5", "fillSite5Clip.mp4", playOnce},
+    {"boatCohortsClip", "boatCohortsClip.mp4", playOnce}, 
+    {"outplantedClip", "outplantedClip.mp4", playOnce}, 
+    {"transitionClip", "transitionClip.mp4", playOnce}
 };
