@@ -7,6 +7,7 @@
         "struct_file.h": "c",
         "termios.h": "c",
         "vlc.h": "c",
-        "time.h": "c"
+        "time.h": "c",
+        "storyboardtypes.h": "c"
     }
 }

@@ -85,5 +85,6 @@ clip_t clips[] = {
     {"fillSiteClip5", "fillSite5Clip.mp4", playOnce},
     {"boatCohortsClip", "boatCohortsClip.mp4", playOnce}, 
     {"outplantedClip", "outplantedClip.mp4", playOnce}, 
-    {"transitionClip", "transitionClip.mp4", playOnce}
+    {"transitionClip", "transitionClip.mp4", playOnce},
+    {"calibrationLoop", "calibrateLoop.mp4", loop}
 };

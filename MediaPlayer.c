@@ -70,7 +70,7 @@
 #define MAX_LINE_LENGTH (128)                       // The maximum length of a user's input (chars)
 #define MAX_WORDS       (3)                         // The maximum number of words in a command line (chars)
 #define MAX_WSIZE       (20)                        // The maximum length of a word (chars)
-#define SLEEP_MICROS    (100)                       // Number of uSec to sleep when a little time needs to pass
+#define SLEEP_MICROS    (10000)                     // Number of uSec to sleep when a little time needs to pass
 #define BANNER          "PTMSC Pinto Abalone Exhibit Media Player v0.1, February 2022"
 #define CMD_SET_VERS    (1000)                      // The version of the command set we speak with the controller
 #define ESCAPE_SEC      (300)                       // Seconds of execution before we stop. Comment out to disable
@@ -122,11 +122,9 @@ void onHelp(int n, char word[MAX_WORDS][MAX_WSIZE]) {
         "help           Type this help text.\n"
         "h              Same as help\n"
     );
-    printf(
-        "play <c>       Play clip c; 0 <= c < %d\n", CLIP_COUNT
-    );
     puts(
-        "stop           Shutdow the media player\n"
+        "play <cName>   Play clip with name <cName>"
+        "stop           Shutdown the media player\n"
     );
 }
 
@@ -337,6 +335,7 @@ int main(int argc, char* argv[]) {
 
     // Show we're alive
     puts(BANNER);
+    puts("Type \"help\" for list of commands");
 
     // Get the keyboard input thread going. All stdin activity is done on keyboardThread
     // stdout and ctlOut activity can be done by any thread.
@@ -400,10 +399,12 @@ int main(int argc, char* argv[]) {
         puts("Failed to create media player");
         return RET_MPCF;
     }
-//    libvlc_set_fullscreen(mp, true);
+    puts("Ready to go. Waiting word from controller.");
+    while (!switchLoop) {
+        usleep(SLEEP_MICROS);                                   // Wait for controller to kick things off
+    }
 
-    puts("MediaPlayer initialized.");
-    puts("Type \"help\" for list of commands");
+    puts("Of we go!");
 
     // Main loop. Do until running goes false
     // There are three key variables here. reqLoopId, the id of the looping clip to play (0 if none) when there no specific 
@@ -478,5 +479,6 @@ int main(int argc, char* argv[]) {
     libvlc_set_fullscreen(mp, false);               // Take it out of fullscreen mode
     libvlc_media_player_release(mp);                // Release it
     libvlc_release(inst);                           // Then release the engine
+    puts("Exiting MediPlayer");
     return RET_OK;                                  // End normally
 }
