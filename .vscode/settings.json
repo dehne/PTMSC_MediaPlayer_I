@@ -8,6 +8,7 @@
         "termios.h": "c",
         "vlc.h": "c",
         "time.h": "c",
-        "storyboardtypes.h": "c"
+        "storyboardtypes.h": "c",
+        "errno.h": "c"
     }
 }

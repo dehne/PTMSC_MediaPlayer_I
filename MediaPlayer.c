@@ -74,6 +74,7 @@
 #define BANNER          "PTMSC Pinto Abalone Exhibit Media Player v0.1, February 2022"
 #define CMD_SET_VERS    (1000)                      // The version of the command set we speak with the controller
 #define ESCAPE_SEC      (300)                       // Seconds of execution before we stop. Comment out to disable
+#define DEBUG                                       // Uncomment to enable debugginh output
 
 // piLock() / piUnlock() usage
 #define LOCK_CLIP       (0)                         // piLock(0) is for changing clips
@@ -287,7 +288,7 @@ PI_THREAD(keyboardThread) {
     printf("> ");
     while (1==1){
         if (fgets(buffer, sizeof(buffer), stdin) != NULL) {
-            // Send commands beginning with '!' to controller; others are local
+            // Send commands beginning with '!' to controller (minus the '!'); others are local
             if (buffer[0] == '!') {
                 printf("Sending \"%s\" to controller", &buffer[1]);
                 fprintf(ctlOut, &buffer[1]);
@@ -351,6 +352,10 @@ int main(int argc, char* argv[]) {
         printf("Failed to open ctlIn. Error: %s\n", strerror(errno));
         return RET_OCTF;
     }
+    if (fflush(ctlIn) != 0) {
+        printf("Failed to fflush ctlIn. Error: %s\n", strerror(errno));
+        return RET_OCTF;
+    }
     if (setvbuf(ctlIn, NULL, _IOLBF, MAX_LINE_LENGTH) != 0) {
         printf("Failed to set ctlIn buffer mode. Error: %s\n", strerror(errno));
         return RET_OCTF;
@@ -358,11 +363,12 @@ int main(int argc, char* argv[]) {
     struct termios t;
     if (tcgetattr(ctlIn->_fileno, &t) != 0) {
         printf("Failed to get termios for ctlIn. Error: %d, (%s)\n", errno, strerror(errno));
-        return(RET_OCTF);
+        return RET_OCTF;
     }
     t.c_lflag &= ~ECHO;
     if (tcsetattr(ctlIn->_fileno, TCSANOW, &t) != 0) {
         printf("Failed to set termios for ctlIn. Error: %d, (%s)\n", errno, strerror(errno));
+        return RET_OCTF;
     }
 
     // ctlOut needs append mode
@@ -385,7 +391,6 @@ int main(int argc, char* argv[]) {
     for (int cNo = 0; cNo < CLIP_COUNT; cNo++) {
         char path[sizeof(MEDIA_PATH) + CLIP_FILE_MAX] = MEDIA_PATH;
         strcat(path, clips[cNo].file);
-        printf("Creating media clip %d (%s) path: %s\n", cNo, clips[cNo].name, path);
         m[cNo] = libvlc_media_new_path(inst, path);             // Make a media item pointing to MEDIA_PATH
         if (m[cNo] == NULL) {                                   // Check that it worked
             printf("Failed to create clip media item %d\n", cNo);
@@ -400,11 +405,11 @@ int main(int argc, char* argv[]) {
         return RET_MPCF;
     }
     puts("Ready to go. Waiting word from controller.");
-    while (!switchLoop) {
-        usleep(SLEEP_MICROS);                                   // Wait for controller to kick things off
+    while (!switchLoop && !switchClip && running) {
+        usleep(SLEEP_MICROS);                                   // Wait for controller to kick things off (or stop command)
     }
 
-    puts("Of we go!");
+    puts("Off we go!");
 
     // Main loop. Do until running goes false
     // There are three key variables here. reqLoopId, the id of the looping clip to play (0 if none) when there no specific 
@@ -440,11 +445,27 @@ int main(int argc, char* argv[]) {
             if (clips[nowPlayingId].type != playThrough && libvlc_media_player_is_playing(mp)) {
                                                                     //   If what's playing is interruptable and the media player is playing
                 libvlc_media_player_pause(mp);                      //     Pause the player (so that it's out of work)
-            }            
+            }
+            #ifdef TRAP
+            if (reqClipId == 3) {                                   //  if it's "abandonedClip"
+                running = false;                                    //    Bail
+            }
+            #endif
         }
+        #ifdef ESCAPE_SEC
+        //Escape hatch
+        if (clock() / CLOCKS_PER_SEC >= ESCAPE_SEC) {
+            puts("Stopping: Escape hatch activated.");
+            running = false;
+        } else
+        #endif
         if (!libvlc_media_player_is_playing(mp)) {                  // If the player is out of work
             if (clips[nowPlayingId].type != loop) {                 //   If what's been playing a looping clip (i.e., it was requested)
-                fprintf(ctlOut, "!videoEnds");                      //     Let the controller know the clip finished
+                printf("Finished clip %d (%s)\n", nowPlayingId, clips[nowPlayingId].name);
+                fprintf(ctlOut, "!videoEnds\n");                    //     Let the controller know the clip finished
+                if (ferror(ctlOut)) {
+                    printf("!videoEnds fprintf error: %s\n", strerror(errno));
+                }
             }
             if (reqClipId != 0) {                                   //   If there's a requested clip pending
                 nowPlayingId = reqClipId;                           //     Switch to the requested clip
@@ -453,22 +474,14 @@ int main(int argc, char* argv[]) {
             } else {                                                //   Otherwise (there wasn't a pending clip play request)
                 nowPlayingId = reqLoopId;                           //     Play the looping clip
             }
-            if (nowPlayingId != 0) {                                //   If there's something to play
-                libvlc_media_player_set_media(mp, m[nowPlayingId]); //     Tell the player we want to play the nowPlayingId clip
-                libvlc_media_player_play(mp);                       //     Kick it off
-                while (!libvlc_media_player_is_playing(mp)) {       //     Spin until it gets going
-                    usleep(SLEEP_MICROS);
-                }
+            libvlc_media_player_set_media(mp, m[nowPlayingId]);     //   Tell the player we want to play the nowPlayingId clip
+            libvlc_media_player_play(mp);                           //   Kick it off
+            libvlc_set_fullscreen(mp, false);                       //   For debugging, no fullscreen mode
+            while (!libvlc_media_player_is_playing(mp)) {           //   Spin until it gets going
+                usleep(SLEEP_MICROS);
             }
         }
         usleep(SLEEP_MICROS);                                       // Mostly, we sleep
-        #ifdef ESCAPE_SEC
-        //Escape hatch
-        if (clock() / CLOCKS_PER_SEC >= ESCAPE_SEC) {
-            puts("Stopping: Escape hatch activated.");
-            running = false;
-        }
-        #endif
     }
 
     // Quitting time. Clean up after ourselves
