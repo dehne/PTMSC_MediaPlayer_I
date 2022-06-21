@@ -385,8 +385,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Set things up to play the exhibit's media
-    const char *args[] = {"--vout=mmal_vout", "--avcodec-skiploopfilter=4"};
-    inst = libvlc_new (sizeof(args) / sizeof(args[0]), args);   // Load and initialize the libVLC engine
+    inst = libvlc_new(0, NULL);
 
     for (int cNo = 0; cNo < CLIP_COUNT; cNo++) {
         char path[sizeof(MEDIA_PATH) + CLIP_FILE_MAX] = MEDIA_PATH;
@@ -484,14 +483,15 @@ int main(int argc, char* argv[]) {
         usleep(SLEEP_MICROS);                                       // Mostly, we sleep
     }
 
+    puts("Done looping. Cleaning up.");
     // Quitting time. Clean up after ourselves
-     for (int cNo = 0; cNo < CLIP_COUNT; cNo++) {   // Release the media items
+    for (int cNo = 0; cNo < CLIP_COUNT; cNo++) {    // Release the media items
         libvlc_media_release (m[cNo]);
     }
     libvlc_media_player_stop(mp);                   // Stop the media player
     libvlc_set_fullscreen(mp, false);               // Take it out of fullscreen mode
     libvlc_media_player_release(mp);                // Release it
     libvlc_release(inst);                           // Then release the engine
-    puts("Exiting MediPlayer");
+    puts("Exiting MediaPlayer");
     return RET_OK;                                  // End normally
 }
