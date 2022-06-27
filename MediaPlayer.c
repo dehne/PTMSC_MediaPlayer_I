@@ -352,10 +352,6 @@ int main(int argc, char* argv[]) {
         printf("Failed to open ctlIn. Error: %s\n", strerror(errno));
         return RET_OCTF;
     }
-    if (fflush(ctlIn) != 0) {
-        printf("Failed to fflush ctlIn. Error: %s\n", strerror(errno));
-        return RET_OCTF;
-    }
     if (setvbuf(ctlIn, NULL, _IOLBF, MAX_LINE_LENGTH) != 0) {
         printf("Failed to set ctlIn buffer mode. Error: %s\n", strerror(errno));
         return RET_OCTF;
@@ -408,8 +404,6 @@ int main(int argc, char* argv[]) {
         usleep(SLEEP_MICROS);                                   // Wait for controller to kick things off (or stop command)
     }
 
-    puts("Off we go!");
-
     // Main loop. Do until running goes false
     // There are three key variables here. reqLoopId, the id of the looping clip to play (0 if none) when there no specific 
     // clip has been requested; reqClipId, the id of the last specifically requested clip (0 if none); and nowPlayingId, the 
@@ -419,14 +413,17 @@ int main(int argc, char* argv[]) {
     // starts.
     while (running) {
         if (switchLoop) {                                           // If we've been told to switch which clip is the looping one
-            int oldLoopId = reqLoopId;                              //   Remember what the id of the old looping clip was
+            int oldLoopId = reqLoopId;
             piLock(LOCK_LOOP);                                      //   Do the ritual to update what the requested looping clip is
             reqLoopId = newLoopId;
             switchLoop = false;
             piUnlock(LOCK_LOOP);
-            if (clips[reqLoopId].type != loop) {                    //   If the new requested clip isn't looping, ignore the request
+            if (reqLoopId < 0 || reqLoopId >= sizeof(clips) / sizeof(clips[0])) {
+                printf("Controller asked for non-existant loop: %d. Ignoring request.\n", reqLoopId);
+                reqLoopId = oldLoopId;
+            } else if (clips[reqLoopId].type != loop) {             //  Otherwise if the new requested clip isn't looping, ignore the request
                 printf("Ignoring request to loop non-looping clip %s\n", clips[reqLoopId].name);
-                reqLoopId - oldLoopId;
+                reqLoopId = oldLoopId;
             } else {                                                //   Otherwise (make the switch to the new one)
                 if (nowPlayingId == oldLoopId) {                    //     If current clip that's playing is the old looping clip
                     nowPlayingId = reqLoopId;                       //       Swap out the old looping clip with the new one
@@ -436,12 +433,16 @@ int main(int argc, char* argv[]) {
             }
         }
         if (switchClip && reqClipId == 0) {                         // If we've been told to play a new clip and there's not one already queued
+            int oldClipId = reqClipId;
             piLock(LOCK_CLIP);                                      //   Do the ritual to switch which clip is current
             reqClipId = newClipId;
             switchClip = false;
             piUnlock(LOCK_CLIP);
             printf("Switching to clip %d (%s)\n", reqClipId, clips[reqClipId].name);
-            if (clips[nowPlayingId].type != playThrough && libvlc_media_player_is_playing(mp)) {
+            if (reqClipId < 0 || reqClipId >= sizeof(clips) / sizeof(clips[0])) {
+                printf("Controller asked for non-existent clip: %d. Ignoring request.\n", reqClipId);
+                reqClipId - oldClipId;
+            } else if (clips[nowPlayingId].type != playThrough && libvlc_media_player_is_playing(mp)) {
                                                                     //   If what's playing is interruptable and the media player is playing
                 libvlc_media_player_pause(mp);                      //     Pause the player (so that it's out of work)
             }

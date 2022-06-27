@@ -59,32 +59,42 @@ typedef struct clip_t {
 
 // The collection clip definitions, indexed by the type sb_clipId_t
 clip_t clips[] = {
-    {"noClip", "dummy.mp4", playOnce},
-    {"divingLoop", "divingLoop.mp4", loop},
-    {"restingLoop", "restingLoop.mp4", loop}, 
-    {"abandonedClip", "abandonedClip.mp4", playOnce}, 
-    {"fullSiteClip1", "fullSite1Clip.mp4", playOnce}, 
-    {"fullSiteClip2", "fullSite2Clip.mp4", playOnce}, 
-    {"fullSiteClip3", "fullSite3Clip.mp4", playOnce}, 
-    {"fullSiteClip4", "fullSite4Clip.mp4", playOnce}, 
-    {"fullSiteClip5", "fullSite5Clip.mp4", playOnce},
-    {"siteNoCohortsClip1", "siteNoCohorts1Clip.mp4", playOnce}, 
-    {"siteNoCohortsClip2", "siteNoCohorts2Clip.mp4", playOnce}, 
-    {"siteNoCohortsClip3", "siteNoCohorts3Clip.mp4", playOnce}, 
-    {"siteNoCohortsClip4", "siteNoCohorts4Clip.mp4", playOnce}, 
-    {"siteNoCohortsClip5", "siteNoCohorts5Clip.mp4", playOnce},
-    {"openSiteLoop1", "openSite1Loop.mp4", loop}, 
-    {"openSiteLoop2", "openSite2Loop.mp4", loop}, 
-    {"openSiteLoop3", "openSite3Loop.mp4", loop}, 
-    {"openSiteLoop4", "openSite4Loop.mp4", loop}, 
-    {"openSiteLoop5", "openSite5Loop.mp4", loop}, 
-    {"fillSiteClip1", "fillSite1Clip.mp4", playOnce}, 
-    {"fillSiteClip2", "fillSite2Clip.mp4", playOnce}, 
-    {"fillSiteClip3", "fillSite3Clip.mp4", playOnce}, 
-    {"fillSiteClip4", "fillSite4Clip.mp4", playOnce}, 
-    {"fillSiteClip5", "fillSite5Clip.mp4", playOnce},
-    {"boatCohortsClip", "boatCohortsClip.mp4", playOnce}, 
-    {"outplantedClip", "outplantedClip.mp4", playOnce}, 
-    {"transitionClip", "transitionClip.mp4", playOnce},
-    {"calibrationLoop", "calibrateLoop.mp4", loop}
+    {"noClip", "dummy.mp4", playOnce},                      //  0
+    {"divingLoop", "divingLoop.mp4", loop},                 //  1
+    {"restingLoop", "restingLoop.mp4", loop},               //  2
+    {"abandonedClip", "abandonedClip.mp4", loop},           //  3
+    {"fullSite1Loop", "fullSite1Loop.mp4", loop},           //  4
+    {"fullSite2Loop", "fullSite2Loop.mp4", loop},           //  5
+    {"fullSite3Loop", "fullSite3Loop.mp4", loop},           //  6
+    {"fullSite4Loop", "fullSite4Loop.mp4", loop},           //  7
+    {"fullSite5Loop", "fullSite5Loop.mp4", loop},           //  8
+    {"site1NoCohortsLoop", "site1NoCohortsLoop.mp4", loop}, //  9
+    {"site2NoCohortsLoop", "site2NoCohortsLoop.mp4", loop}, // 10
+    {"site3NoCohortsLoop", "site3NoCohortsLoop.mp4", loop}, // 11
+    {"site4NoCohortsLoop", "site4NoCohortsLoop.mp4", loop}, // 12
+    {"site5NoCohortsLoop", "site5NoCohortsLoop.mp4", loop}, // 13
+    {"openSite1Loop", "openSite1Loop.mp4", loop},           // 14
+    {"openSite2Loop", "openSite2Loop.mp4", loop},           // 15
+    {"openSite3Loop", "openSite3Loop.mp4", loop},           // 16
+    {"openSite4Loop", "openSite4Loop.mp4", loop},           // 17
+    {"openSite5Loop", "openSite5Loop.mp4", loop},           // 18
+    {"fillSite1Clip", "fillSite1Clip.mp4", playOnce},       // 19
+    {"fillSite2Clip", "fillSite2Clip.mp4", playOnce},       // 20
+    {"fillSite3Clip", "fillSite3Clip.mp4", playOnce},       // 21
+    {"fillSite4Clip", "fillSite4Clip.mp4", playOnce},       // 22
+    {"fillSite5Clip", "fillSite5Clip.mp4", playOnce},       // 23
+    {"atSite1Loop", "atSite1Loop.mp4", loop},               // 24
+    {"atSite2Loop", "atSite2Loop.mp4", loop},               // 25
+    {"atSite3Loop", "atSite3Loop.mp4", loop},               // 26
+    {"atSite4Loop", "atSite4Loop.mp4", loop},               // 27
+    {"atSite5Loop", "atSite5Loop.mp4", loop},               // 28
+    {"outAtSite1Loop", "outAtSite1Loop.mp4", loop},         // 29
+    {"outAtSite2Loop", "outAtSite2Loop.mp4", loop},         // 30
+    {"outAtSite3Loop", "outAtSite3Loop.mp4", loop},         // 31
+    {"outAtSite4Loop", "outAtSite4Loop.mp4", loop},         // 32
+    {"outAtSite5Loop", "outAtSite5Loop.mp4", loop},         // 33
+    {"boatCohortsLoop", "boatCohortsLoop.mp4", loop},       // 34
+    {"transitionClip", "transitionClip.mp4", playOnce},     // 35
+    {"calibrationLoop", "calibrateLoop.mp4", loop},         // 36
+    {"instructLoop", "instructLoop.mp4", loop}              // 37
 };
