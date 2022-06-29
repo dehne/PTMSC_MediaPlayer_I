@@ -57,7 +57,8 @@ typedef struct clip_t {
     enum clipTypes type;                                    // Type of clip
 } clip_t;
 
-// The collection clip definitions, indexed by the type sb_clipId_t
+// The collection clip definitions, indexed by the type sb_clipId_t in Storyboardtypes.h over in
+// the controller program. This needs to match exactly.
 clip_t clips[] = {
     {"noClip", "dummy.mp4", playOnce},                      //  0
     {"divingLoop", "divingLoop.mp4", loop},                 //  1
@@ -88,11 +89,11 @@ clip_t clips[] = {
     {"atSite3Loop", "atSite3Loop.mp4", loop},               // 26
     {"atSite4Loop", "atSite4Loop.mp4", loop},               // 27
     {"atSite5Loop", "atSite5Loop.mp4", loop},               // 28
-    {"outAtSite1Loop", "outAtSite1Loop.mp4", loop},         // 29
-    {"outAtSite2Loop", "outAtSite2Loop.mp4", loop},         // 30
-    {"outAtSite3Loop", "outAtSite3Loop.mp4", loop},         // 31
-    {"outAtSite4Loop", "outAtSite4Loop.mp4", loop},         // 32
-    {"outAtSite5Loop", "outAtSite5Loop.mp4", loop},         // 33
+    {"outAtSite1Clip", "outAtSite1Clip.mp4", playOnce},     // 29
+    {"outAtSite2Clip", "outAtSite2Clip.mp4", playOnce},     // 30
+    {"outAtSite3Clip", "outAtSite3Clip.mp4", playOnce},     // 31
+    {"outAtSite4Clip", "outAtSite4Clip.mp4", playOnce},     // 32
+    {"outAtSite5Clip", "outAtSite5Clip.mp4", playOnce},     // 33
     {"boatCohortsLoop", "boatCohortsLoop.mp4", loop},       // 34
     {"transitionClip", "transitionClip.mp4", playOnce},     // 35
     {"calibrationLoop", "calibrateLoop.mp4", loop},         // 36
