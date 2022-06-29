@@ -96,7 +96,16 @@
  ***/
 FILE *ctlIn;                                        // The input stream for the exhibit controller
 FILE *ctlOut;                                       // The output stream for the controller
+libvlc_instance_t * inst;                           // The libVLC engine we'll be using
+libvlc_media_player_t *mp;                          // The media player we'll use
+libvlc_media_t *m[CLIP_COUNT];                      // The clips we'll play represented as media items
 bool running = true;                                // When this goes false (e.g., the stop command), we shut down
+bool isFullscreen =                                 // Whether we display the video in fullscreen mode
+#ifdef DEBUG 
+false; 
+#else 
+true; 
+#endif
 
 // Inter-thread communication between a thread that wants to change the clip that's playing and 
 // main loop. To change the clip, do a piLock(LOCK_CLIP), then set newClipId to the number of the 
@@ -183,18 +192,18 @@ void onPlayClip(int n, char word[MAX_WORDS][MAX_WSIZE]) {
  * Command handler for !setLoop command, issued by controller
  * 
  * !setLoop clipId
- *      Set the loop to be played when the currently playing clip finishes 
- *      playing to the clip whose id -- the index into clips[] -- is clipId. 
- *      If a loop is playing, switch to playing this loop instead.
+ *      Set the video loop to be played when we're not playing something else
+ *      to the clip whose id -- the index into clips[] -- is clipId. 
+ *      If a loop is already playing, switch to playing this loop instead.
  ***/
 void onSetLoop(int n, char word[MAX_WORDS][MAX_WSIZE]) {
     int clipId = 0;
     if (n < 2) {
-        puts("!setLoop inviked with no clipId specified; used 0.\n");
+        puts("!setLoop invoked with no clipId specified; used 0.\n");
     } else {
         clipId = atoi(word[1]);
         if (clipId < 0 || clipId >= CLIP_COUNT) {
-            printf("!setLoop inviked with invalid clipId: \"%s\"; used .", word[1]);
+            printf("!setLoop invoked with invalid clipId: \"%s\"; used 0.", word[1]);
             clipId = 0;
         }
     }
@@ -216,6 +225,24 @@ void onStop(int n, char word[MAX_WORDS][MAX_WSIZE]) {
     puts("Stopping\n");
     running = false;
 }
+
+/***
+ *
+ *  Command handler for !toggleFS command
+ *
+ *  !toggleFS   Toggle whether the clips are playing in fullscreen mode
+ *              Only issued by controller
+ *
+ ***/
+ void onToggleFS(int n, char word[MAX_WORDS][MAX_WSIZE]) {
+     if (mp == NULL) {
+         puts("Ignoring !toggleFS command; no media player defined.");
+         return;
+     }
+     isFullscreen = !isFullscreen;
+     libvlc_set_fullscreen(mp, isFullscreen);
+     printf("Screen mode set to %s.\n", isFullscreen ? "full" : "window");
+ }
 
 /***
  * 
@@ -248,10 +275,10 @@ cmd_t kbRegistry[] = {
 // The registry of controller-issued commands aimed at MediaPlayer. 
 // The last command must be {"__END__", NULL}.
 cmd_t controllerRegistry[] = {
-    {"play", onPlay},
     {"!playClip", onPlayClip},
     {"!setLoop", onSetLoop},
     {"!stop", onStop},
+    {"!toggleFS", onToggleFS},
     {"!version", onVersion},
     {"__END__", NULL}
 };
@@ -327,9 +354,6 @@ PI_THREAD(controllerThread) {
  * 
  ***/
 int main(int argc, char* argv[]) {
-    libvlc_instance_t * inst;                       // The libVLC engine we'll be using
-    libvlc_media_player_t *mp;                      // The media player we'll use
-    libvlc_media_t *m[CLIP_COUNT];                  // The clips we'll play represented as media items
     int reqClipId;                                  // The id of the requested clip; 0 if none
     int reqLoopId = 0;                              // The id of the clip that plays when no clip is playing
     int nowPlayingId = 0;                           // The id of the clip the media player was last started on
