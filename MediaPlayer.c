@@ -500,7 +500,6 @@ int main(int argc, char* argv[]) {
             }
             libvlc_media_player_set_media(mp, m[nowPlayingId]);     //   Tell the player we want to play the nowPlayingId clip
             libvlc_media_player_play(mp);                           //   Kick it off
-            libvlc_set_fullscreen(mp, false);                       //   For debugging, no fullscreen mode
             while (!libvlc_media_player_is_playing(mp)) {           //   Spin until it gets going
                 usleep(SLEEP_MICROS);
             }
