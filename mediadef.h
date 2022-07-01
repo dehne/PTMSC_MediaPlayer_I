@@ -64,21 +64,21 @@ clip_t clips[] = {
     {"divingLoop", "divingLoop.mp4", loop},                     //  1
     {"restingLoop", "restingLoop.mp4", loop},                   //  2
     {"abandonedClip", "abandonedClip.mp4", loop},               //  3
-    {"fullSite1Loop", "fullSite1Loop.mp4", loop},               //  4
-    {"fullSite2Loop", "fullSite2Loop.mp4", loop},               //  5
-    {"fullSite3Loop", "fullSite3Loop.mp4", loop},               //  6
-    {"fullSite4Loop", "fullSite4Loop.mp4", loop},               //  7
-    {"fullSite5Loop", "fullSite5Loop.mp4", loop},               //  8
+    {"fullSite1Clip", "fullSite1Clip.mp4", playOnce},           //  4
+    {"fullSite2Clip", "fullSite2Clip.mp4", playOnce},           //  5
+    {"fullSite3Clip", "fullSite3Clip.mp4", playOnce},           //  6
+    {"fullSite4Clip", "fullSite4Clip.mp4", playOnce},           //  7
+    {"fullSite5Clip", "fullSite5Clip.mp4", playOnce},           //  8
     {"site1NoCohortsClip", "site1NoCohortsClip.mp4", playOnce}, //  9
     {"site2NoCohortsClip", "site2NoCohortsClip.mp4", playOnce}, // 10
     {"site3NoCohortsClip", "site3NoCohortsClip.mp4", playOnce}, // 11
     {"site4NoCohortsClip", "site4NoCohortsClip.mp4", playOnce}, // 12
     {"site5NoCohortsClip", "site5NoCohortsClip.mp4", playOnce}, // 13
-    {"openSite1Loop", "openSite1Loop.mp4", loop},               // 14
-    {"openSite2Loop", "openSite2Loop.mp4", loop},               // 15
-    {"openSite3Loop", "openSite3Loop.mp4", loop},               // 16
-    {"openSite4Loop", "openSite4Loop.mp4", loop},               // 17
-    {"openSite5Loop", "openSite5Loop.mp4", loop},               // 18
+    {"openSite1Clip", "openSite1Clip.mp4", playOnce},           // 14
+    {"openSite2Clip", "openSite2Clip.mp4", playOnce},           // 15
+    {"openSite3Clip", "openSite3Clip.mp4", playOnce},           // 16
+    {"openSite4Clip", "openSite4Clip.mp4", playOnce},           // 17
+    {"openSite5Clip", "openSite5Clip.mp4", playOnce},           // 18
     {"fillSite1Clip", "fillSite1Clip.mp4", playOnce},           // 19
     {"fillSite2Clip", "fillSite2Clip.mp4", playOnce},           // 20
     {"fillSite3Clip", "fillSite3Clip.mp4", playOnce},           // 21
@@ -95,7 +95,9 @@ clip_t clips[] = {
     {"outAtSite4Clip", "outAtSite4Clip.mp4", playOnce},         // 32
     {"outAtSite5Clip", "outAtSite5Clip.mp4", playOnce},         // 33
     {"boatCohortsLoop", "boatCohortsLoop.mp4", loop},           // 34
-    {"transitionClip", "transitionClip.mp4", playOnce},         // 35
-    {"calibrationLoop", "calibrateLoop.mp4", loop},             // 36
-    {"instructLoop", "instructLoop.mp4", loop}                  // 37
+    {"atBoatLoopp", "atBoatLoop.mp4", loop},                    // 35
+    {"transitionClip", "transitionClip.mp4", playOnce},         // 36
+    {"calibrationLoop", "calibrateLoop.mp4", loop},             // 37
+    {"instructLoop", "instructLoop.mp4", loop},                 // 38
+    {"gameOverClip", "gameOverClip.mp4"}                        // 39
 };

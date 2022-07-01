@@ -499,7 +499,11 @@ int main(int argc, char* argv[]) {
                 nowPlayingId = reqLoopId;                           //     Play the looping clip
             }
             libvlc_media_player_set_media(mp, m[nowPlayingId]);     //   Tell the player we want to play the nowPlayingId clip
-            libvlc_media_player_play(mp);                           //   Kick it off
+            if (libvlc_media_player_play(mp) != 0) {                //   Try to start playing the clip. If that fails
+                libvlc_set_fullscreen(mp, false);                   //     Get out of fullscreen mode
+                puts("Failed to start clip. Stopping");             //     Bail out
+                running = false;
+            }
             while (!libvlc_media_player_is_playing(mp)) {           //   Spin until it gets going
                 usleep(SLEEP_MICROS);
             }
@@ -507,7 +511,7 @@ int main(int argc, char* argv[]) {
         usleep(SLEEP_MICROS);                                       // Mostly, we sleep
     }
 
-    puts("Done looping. Cleaning up.");
+    puts("Cleaning up.");
     // Quitting time. Clean up after ourselves
     for (int cNo = 0; cNo < CLIP_COUNT; cNo++) {    // Release the media items
         libvlc_media_release (m[cNo]);
