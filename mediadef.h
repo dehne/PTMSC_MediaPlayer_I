@@ -47,7 +47,7 @@
 
 enum clipTypes {
     playOnce,           // Play the clip once and then revert to idle. It's okay to interrupt it with an new clip
-    playThrough,        // Play the clip once and the revert to idle. New clips ignored until it finishes
+    fullPlay,           // Play the clip once and the revert to idle. New clips ignored until it finishes
     loop                // Play the clip over and over. It's okay to interrupt it with a new clip
 };
 
@@ -80,32 +80,32 @@ clip_t clips[] = {
     {"openSite3Clip", "openSite3Clip.mp4", playOnce},           // 17
     {"openSite4Clip", "openSite4Clip.mp4", playOnce},           // 18
     {"openSite5Clip", "openSite5Clip.mp4", playOnce},           // 10
-    {"fillSite1Clip", "fillSite1Clip.mp4", playOnce},           // 20
-    {"fillSite2Clip", "fillSite2Clip.mp4", playOnce},           // 21
-    {"fillSite3Clip", "fillSite3Clip.mp4", playOnce},           // 22
-    {"fillSite4Clip", "fillSite4Clip.mp4", playOnce},           // 23
-    {"fillSite5Clip", "fillSite5Clip.mp4", playOnce},           // 24
+    {"fillSite1Clip", "fillSite1Clip.mp4", fullPlay},           // 20
+    {"fillSite2Clip", "fillSite2Clip.mp4", fullPlay},           // 21
+    {"fillSite3Clip", "fillSite3Clip.mp4", fullPlay},           // 22
+    {"fillSite4Clip", "fillSite4Clip.mp4", fullPlay},           // 23
+    {"fillSite5Clip", "fillSite5Clip.mp4", fullPlay},           // 24
     {"atSite1Loop", "atSite1Loop.mp4", loop},                   // 25
     {"atSite2Loop", "atSite2Loop.mp4", loop},                   // 26
     {"atSite3Loop", "atSite3Loop.mp4", loop},                   // 27
     {"atSite4Loop", "atSite4Loop.mp4", loop},                   // 28
     {"atSite5Loop", "atSite5Loop.mp4", loop},                   // 29
-    {"reviewSite1Clip", "reviewSite1Clip.mp4", playOnce},       // 30
-    {"reviewSite2Clip", "reviewSite2Clip.mp4", playOnce},       // 31
-    {"reviewSite3Clip", "reviewSite3Clip.mp4", playOnce},       // 32
-    {"reviewSite4Clip", "reviewSite4Clip.mp4", playOnce},       // 33
-    {"reviewSite5Clip", "reviewSite5Clip.mp4", playOnce},       // 34
-    {"outAtSite1Clip", "outAtSite1Clip.mp4", playOnce},         // 35
-    {"outAtSite2Clip", "outAtSite2Clip.mp4", playOnce},         // 36
-    {"outAtSite3Clip", "outAtSite3Clip.mp4", playOnce},         // 37
-    {"outAtSite4Clip", "outAtSite4Clip.mp4", playOnce},         // 38
-    {"outAtSite5Clip", "outAtSite5Clip.mp4", playOnce},         // 39
+    {"reviewSite1Clip", "reviewSite1Clip.mp4", fullPlay},       // 30
+    {"reviewSite2Clip", "reviewSite2Clip.mp4", fullPlay},       // 31
+    {"reviewSite3Clip", "reviewSite3Clip.mp4", fullPlay},       // 32
+    {"reviewSite4Clip", "reviewSite4Clip.mp4", fullPlay},       // 33
+    {"reviewSite5Clip", "reviewSite5Clip.mp4", fullPlay},       // 34
+    {"outAtSite1Clip", "outAtSite1Clip.mp4", fullPlay},         // 35
+    {"outAtSite2Clip", "outAtSite2Clip.mp4", fullPlay},         // 36
+    {"outAtSite3Clip", "outAtSite3Clip.mp4", fullPlay},         // 37
+    {"outAtSite4Clip", "outAtSite4Clip.mp4", fullPlay},         // 38
+    {"outAtSite5Clip", "outAtSite5Clip.mp4", fullPlay},         // 39
     {"boatCohortsLoop", "boatCohortsLoop.mp4", loop},           // 40
     {"atBoatLoopp", "atBoatLoop.mp4", loop},                    // 41
-    {"transitionClip", "transitionClip.mp4", playOnce},         // 42
+    {"transitionClip", "transitionClip.mp4", fullPlay},         // 42
     {"calibrationLoop", "calibrateLoop.mp4", loop},             // 43
-    {"reviewIntroClip", "reviewIntroClip.mp4", playOnce},       // 44
-    {"superScoreClip", "superScoreClip.mp4", playOnce},         // 45
-    {"goodScoreClip", "gooScoreClip.mp4", playOnce},            // 46
-    {"mehScoreClip", "mehScoreClip.mp4", playOnce}              // 47
+    {"reviewIntroClip", "reviewIntroClip.mp4", fullPlay},       // 44
+    {"superScoreClip", "superScoreClip.mp4", fullPlay},         // 45
+    {"goodScoreClip", "gooScoreClip.mp4", fullPlay},            // 46
+    {"mehScoreClip", "mehScoreClip.mp4", fullPlay}              // 47
 };

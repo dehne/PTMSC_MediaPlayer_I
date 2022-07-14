@@ -466,7 +466,7 @@ int main(int argc, char* argv[]) {
             if (reqClipId < 0 || reqClipId >= sizeof(clips) / sizeof(clips[0])) {
                 printf("Controller asked for non-existent clip: %d. Ignoring request.\n", reqClipId);
                 reqClipId - oldClipId;
-            } else if (clips[nowPlayingId].type != playThrough && libvlc_media_player_is_playing(mp)) {
+            } else if (clips[nowPlayingId].type != fullPlay && libvlc_media_player_is_playing(mp)) {
                                                                     //   If what's playing is interruptable and the media player is playing
                 libvlc_media_player_pause(mp);                      //     Pause the player (so that it's out of work)
             }
